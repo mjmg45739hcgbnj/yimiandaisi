@@ -503,6 +503,7 @@ const STORY = [{"num":"第一章","title":"醒","common":[{"k":"p","t":"铁链�
   let token = 0;
   let typing = false;
   let skip = false;
+  let pageDone = false;
   let chapTimer = null;
   let muted = false;
   let sub = null;
@@ -733,11 +734,13 @@ const STORY = [{"num":"第一章","title":"醒","common":[{"k":"p","t":"铁链�
   }
 
   async function typePage(paras, tk) {
+    pageDone = false;
     els.text.innerHTML = '';
     els.stage.scrollTop = 0;
     els.hint.classList.remove('on');
     pageTurn();
-    for (const raw of paras) {
+    for (let pi = 0; pi < paras.length; pi++) {
+      const raw = paras[pi];
       if (tk !== token) return;
       if (raw === '\u0001') {
         const d = document.createElement('div');
@@ -766,6 +769,7 @@ const STORY = [{"num":"第一章","title":"醒","common":[{"k":"p","t":"铁链�
         }
         n.el.textContent = n.t;
       }
+      if (pi === paras.length - 1) pageDone = true;
       if (!skip) await wait(110);
     }
   }
@@ -856,12 +860,12 @@ const STORY = [{"num":"第一章","title":"醒","common":[{"k":"p","t":"铁链�
       return;
     }
     if (step.type === 'probe' || step.type === 'pick') {
-      typing = false; skip = false;
+      typing = false; skip = false; pageDone = false;
       showProbe(step);
       return;
     }
     if (step.type === 'choice') {
-      typing = false;
+      typing = false; pageDone = false;
       els.text.innerHTML = '<p class="probeHint">该说话了。</p>';
       els.hint.classList.remove('on');
       showChoices();
@@ -870,6 +874,7 @@ const STORY = [{"num":"第一章","title":"醒","common":[{"k":"p","t":"铁链�
     els.text.classList.toggle('chapter-start', S.i === 0);
     if (step.fx && step.fx.length) step.fx.forEach(playFx);
     skip = false;
+    pageDone = false;
     typing = true;
     pageArmedAt = Date.now();
     await typePage(step.paras, tk);
@@ -954,6 +959,7 @@ const STORY = [{"num":"第一章","title":"醒","common":[{"k":"p","t":"铁链�
     if (CONFIG.clock && S.timeOn && S.clockText) { els.clock.textContent = S.clockText; els.clock.classList.add('on'); }
     els.text.classList.remove('chapter-start');
     skip = false;
+    pageDone = false;
     typing = true;
     pageArmedAt = Date.now();
     els.choices.innerHTML = '';
@@ -1019,7 +1025,15 @@ const STORY = [{"num":"第一章","title":"醒","common":[{"k":"p","t":"铁链�
 
   /* ---------- 翻页 ---------- */
   function next() {
-    if (typing) { skip = true; return; }
+    if (typing) {
+      if (pageDone) {
+        typing = false;                    // 文字已全部出现，这次点击用于翻页
+      } else {
+        if (Date.now() - pageArmedAt < 600) return;  // 新页防误触
+        skip = true;
+        return;
+      }
+    }
     if (sub) {
       subAt++;
       if (subAt >= sub.length) { endSub(); return; }
@@ -1209,7 +1223,7 @@ const STORY = [{"num":"第一章","title":"醒","common":[{"k":"p","t":"铁链�
     if (dt > 700) return;
     if (Math.abs(dx) > 55 && Math.abs(dy) < 50) { dx < 0 ? back() : next(); return; }
     if (Date.now() - pageArmedAt < 320) return;   // 新页面刚出现，忽略连点
-    if (Math.abs(dx) < 12 && Math.abs(dy) < 12) { typing ? (skip = true) : next(); }
+    if (Math.abs(dx) < 12 && Math.abs(dy) < 12) { next(); }
   }, { passive: true });
 
   els.stage.addEventListener('scroll', updateScrollHint, { passive: true });
@@ -1217,13 +1231,13 @@ const STORY = [{"num":"第一章","title":"醒","common":[{"k":"p","t":"铁链�
   els.stage.addEventListener('click', () => {
     if (Date.now() - lastTouchAt < 600) return;   // 触摸后的合成点击，忽略
     if (Date.now() - pageArmedAt < 320) return;   // 刚翻页，忽略连点
-    if (typing) skip = true; else next();
+    next();
   });
   els.hint.addEventListener('click', next);
 
   document.addEventListener('keydown', e => {
     if (!els.title.classList.contains('hidden')) return;
-    if (e.key === ' ' || e.key === 'ArrowRight' || e.key === 'Enter') { e.preventDefault(); typing ? (skip = true) : next(); }
+    if (e.key === ' ' || e.key === 'ArrowRight' || e.key === 'Enter') { e.preventDefault(); next(); }
     if (e.key === 'ArrowLeft') { e.preventDefault(); back(); }
     if (e.key === 'Escape') els.title.classList.add('hidden');
   });
