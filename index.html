@@ -6,6 +6,9 @@
 <meta name="theme-color" content="#0a0a0c">
 <title>老师 · 互动叙事</title>
 <meta name="robots" content="noindex, nofollow">
+<script charset="UTF-8" id="LA_COLLECT" src="//sdk.51.la/js-sdk-pro.min.js"></script>
+<script>if(window.LA)LA.init({id:"3Rkjo3v1awW4t7Cb",ck:"3Rkjo3v1awW4t7Cb",autoTrack:true})</script>
+
 <style>
   :root{
     color-scheme:dark;
@@ -534,6 +537,32 @@ const STORY = [{"num":"第一章","title":"醒","common":[{"k":"p","t":"铁链�
   'use strict';
 
   const $ = s => document.querySelector(s);
+
+  /* ---------- 51LA 事件 ---------- */
+  const FIRST_KEY = 'teacher.firstEnding.v1';
+
+  function trackEvent(name, data) {
+    try {
+      if (window.LA && typeof window.LA.track === 'function') window.LA.track(name, data || {});
+    } catch (e) {}
+  }
+
+  function trackStart() {
+    trackEvent('story_start');
+  }
+
+  function trackFinish(g) {
+    trackEvent('story_finish', { ending: g.key });
+    try {
+      if (!localStorage.getItem(FIRST_KEY)) {
+        localStorage.setItem(FIRST_KEY, g.key);
+        trackEvent('first_ending_' + g.key);
+      }
+    } catch (e) {
+      trackEvent('first_ending_' + g.key);
+    }
+  }
+
   const els = {
     text: $('#text'), stage: $('#stage'), measure: $('#measure'),
     choices: $('#choices'), hint: $('#hint'),
@@ -1203,6 +1232,7 @@ const STORY = [{"num":"第一章","title":"醒","common":[{"k":"p","t":"铁链�
     S.done = true;
     save();
     const g = gradeOf();
+    trackFinish(g);
     els.ending.dataset.kind = g.key;
     if (els.endName) els.endName.textContent = g.n;
     if (els.endGrade) els.endGrade.textContent = g.grade;
@@ -1237,6 +1267,7 @@ const STORY = [{"num":"第一章","title":"醒","common":[{"k":"p","t":"铁链�
   /* ---------- 流程 ---------- */
   function reset() {
     token++;
+    trackStart();
     sub = null; subMode = null; interShownAt = 0;
     els.inter.classList.add('hidden');
     S = { ch: 0, i: 0, branch: null, effect: 0, done: false, statusOn: false, timeOn: false, clockText: null, used: {} };
@@ -1327,7 +1358,7 @@ const STORY = [{"num":"第一章","title":"醒","common":[{"k":"p","t":"铁链�
   els.bgm.addEventListener('error', () => { els.music.classList.add('hidden'); });
 
   els.btnStart.addEventListener('click', reset);
-  els.btnContinue.addEventListener('click', () => { els.title.classList.add('hidden'); startMusic(); startChapter(true); });
+  els.btnContinue.addEventListener('click', () => { trackStart(); els.title.classList.add('hidden'); startMusic(); startChapter(true); });
   $('#btnToc').addEventListener('click', showToc);
   $('#btnTocBack').addEventListener('click', function () {
     els.toc.classList.add('hidden');
